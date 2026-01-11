@@ -4,7 +4,7 @@
 
 import { IWeatherPort } from '../domain/services/RiskForecastingService';
 
-const TOMORROW_IO_BASE = 'https://api.tomorrow.io/v4/timelines';
+const TOMORROW_IO_BASE = 'https://api.tomorrow.io/v4/weather/forecast';
 
 export class TomorrowIOAdapter implements IWeatherPort {
     private readonly apiKey: string;
@@ -23,9 +23,6 @@ export class TomorrowIOAdapter implements IWeatherPort {
 
         const url = new URL(TOMORROW_IO_BASE);
         url.searchParams.set('location', `${lat},${lon}`);
-        url.searchParams.set('fields', 'precipitationIntensity');
-        url.searchParams.set('timesteps', '1d');
-        url.searchParams.set('units', 'imperial');
         url.searchParams.set('apikey', this.apiKey);
 
         const response = await fetch(url.toString());
@@ -52,28 +49,26 @@ export class TomorrowIOAdapter implements IWeatherPort {
     }
 
     private extractPrecipitation(data: TomorrowIOResponse): { precipitationInches: number } {
-        const intervals = data?.data?.timelines?.[0]?.intervals;
-        if (!intervals || intervals.length === 0) {
+        // Sum precipitation from daily forecast (next 24-48 hours)
+        const daily = data?.timelines?.daily;
+        if (!daily || daily.length === 0) {
             return { precipitationInches: 0 };
         }
 
-        // Sum precipitation over next 24 hours
-        const total = intervals.slice(0, 1).reduce((sum, interval) => {
-            return sum + (interval.values?.precipitationIntensity || 0);
-        }, 0);
+        // Get precipitation from first day's values (in mm, convert to inches)
+        const precipMm = daily[0]?.values?.precipitationIntensityAvg || 0;
+        const precipInches = precipMm / 25.4; // mm to inches
 
-        return { precipitationInches: total };
+        return { precipitationInches: Math.round(precipInches * 100) / 100 };
     }
 }
 
 interface TomorrowIOResponse {
-    data?: {
-        timelines?: Array<{
-            intervals?: Array<{
-                values?: {
-                    precipitationIntensity?: number;
-                };
-            }>;
+    timelines?: {
+        daily?: Array<{
+            values?: {
+                precipitationIntensityAvg?: number;
+            };
         }>;
     };
 }
