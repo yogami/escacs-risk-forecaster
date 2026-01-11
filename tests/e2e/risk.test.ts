@@ -11,30 +11,20 @@ test.describe('ESCACS Risk Forecaster E2E', () => {
         expect(body.service).toBe('risk-forecaster');
     });
 
-    test('Risk Forecast Pipeline', async ({ request }) => {
-        // High Risk Site
-        const response = await request.get(`${BASE_URL}/api/forecast/site-alpha`, {
-            params: {
-                mockRain: '3.0',
-                mockHistory: '0.4'
-            }
-        });
+    test('Risk Forecast Pipeline returns valid forecast', async ({ request }) => {
+        // Test with real Fairfax, VA coordinates (real weather data in production)
+        const response = await request.get(`${BASE_URL}/api/forecast/38.8462,-77.3064`);
         expect(response.ok()).toBeTruthy();
         const forecast = await response.json();
-        expect(forecast.level).toBe('Critical');
-        expect(forecast.factors).toContain('Severe precipitation forecast');
-        expect(forecast.factors).toContain('Poor historical compliance records');
 
-        // Low Risk Site
-        const lowResponse = await request.get(`${BASE_URL}/api/forecast/site-beta`, {
-            params: {
-                mockRain: '0.1',
-                mockHistory: '1.0'
-            }
-        });
-        expect(lowResponse.ok()).toBeTruthy();
-        const lowForecast = await lowResponse.json();
-        expect(lowForecast.level).toBe('Low');
+        // Verify forecast structure (actual values depend on real weather)
+        expect(forecast.siteId).toBe('38.8462,-77.3064');
+        expect(forecast.score).toBeGreaterThanOrEqual(0);
+        expect(forecast.score).toBeLessThanOrEqual(100);
+        expect(['Low', 'Moderate', 'High', 'Critical']).toContain(forecast.level);
+        expect(forecast.confidence).toBeGreaterThan(0);
+        expect(Array.isArray(forecast.factors)).toBeTruthy();
+        expect(forecast.timestamp).toBeTruthy();
     });
 
     test('OpenAPI documentation is available', async ({ request }) => {
