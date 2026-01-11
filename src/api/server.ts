@@ -32,7 +32,7 @@ app.doc('/api/openapi.json', {
 
 app.get('/api/docs', swaggerUI({ url: '/api/openapi.json' }));
 
-const port = parseInt(process.env.PORT || '3005', 10);
+const port = parseInt(process.env.PORT || '8080', 10);
 console.log(`Risk Forecaster running on port ${port}`);
 
 serve({ fetch: app.fetch, port });
